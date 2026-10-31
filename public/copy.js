@@ -50,7 +50,18 @@ window.COPY = {
     verdict: "Listen to the host for who's out.",
   },
 
-  selected: (n) => `${n} of 3 selected.`,
+  selected: (n, max) => `${n} of ${max} selected.`,
+
+  // Special guests: the night list shows one choice instead of three, so from across the room
+  // their phone looks the same as everyone else's.
+  powerHeadings: {
+    investigator: 'Pick one person to investigate.',
+    exorcist: 'Pick one person to protect.',
+    medium: 'Pick one spirit to contact.',
+  },
+  powerHint: 'Then tap Done. Your answer comes in the morning: hold the role button to see it.',
+  noSpirits: 'Nobody has been murdered yet, so there are no spirits to reach. Just tap Done.',
+  morningPower: 'Hold the button to see what you learned last night.',
   done: 'Done',
   changePicks: 'Change picks',
   voteYours: (name) => `Your vote: ${name}. Tap another name to change it.`,
@@ -60,7 +71,7 @@ window.COPY = {
   helpTitle: 'How to play',
   help: [
     "Hold the button to see your secret role. Don't show anyone.",
-    'When the host calls night, tap up to 3 names. Everyone does this, so nobody looks suspicious.',
+    'When the host calls night, tap up to 3 names. Everyone does this, so nobody looks suspicious. Special guests tap just one.',
     'The host announces who died. Then everyone argues and votes someone out.',
     'If you die, keep partying, but no hints and no voting.',
     'Guests win by voting out every killer. Killers win if they last until the end.',
@@ -73,7 +84,22 @@ window.COPY = {
   cardKiller: (names) =>
     `Your team: ${names}. At night, tap up to 3 people to kill. The Team picks box shows your team's top 3 right now, so agree on the same 3 before the timer runs out. Act normal and never pick each other.`,
   cardKillerAlone: 'just you',
-  cardRoleLine: (role) => `You're a ${role === 'killer' ? 'KILLER' : 'GUEST'}`,
+  cardRoleLine: (role, power) =>
+    role === 'killer' ? "You're a KILLER" : power ? `You're the ${power.toUpperCase()}` : "You're a GUEST",
+  cardPower: {
+    investigator:
+      "You're a guest with a gift. Each night, pick one person to investigate. In the morning you'll learn if they're a killer. Share carefully: the killers will come for you.",
+    exorcist:
+      "You're a guest with a gift. Each night, pick one person to protect. If the killers go for them, they survive. You can't protect yourself, or the same person two nights running.",
+    medium:
+      "You're a guest with a gift. Each night, pick one murdered player to contact. Their spirit names someone who tapped them the night they died. Killers did, but so did guests, so it's a lead, not proof.",
+  },
+  finding: (f) => {
+    const r = `Round ${f.round}: `;
+    if (f.kind === 'investigator') return r + `${f.name} is ${f.isKiller ? 'a KILLER' : 'not a killer'}.`;
+    if (f.kind === 'exorcist') return r + (f.saved ? `You saved ${f.name}! The killers came for them.` : `You protected ${f.name}.`);
+    return r + (f.saw ? `${f.name}'s spirit names ${f.saw}.` : `${f.name}'s spirit had nobody to name.`);
+  },
   cardAlive: "You're alive.",
   cardDeath: (death, round) =>
     death === 'murdered'
@@ -114,6 +140,8 @@ window.COPY = {
     howVoted: (n) => `How everyone voted (${n})`,
     votedFor: 'voted for',
     killerMark: ' (killer)',
+    powersTitle: 'Special guests',
+    powerName: { investigator: 'Investigator', exorcist: 'Exorcist', medium: 'Medium' },
   },
 
   // ---- host ----
@@ -160,11 +188,20 @@ window.COPY = {
   undoStartWarn: 'Players have already seen their roles. Starting again gives new roles.',
 
   victimsNone: 'Nobody died.',
+  savedNote: (n) =>
+    n === 1
+      ? "An Exorcist saved someone tonight. Say: 'The killers struck, but a spirit turned them away.'"
+      : `Exorcists saved ${n} people tonight. Say: 'The killers struck, but the spirits turned them away.'`,
+  protectedLine: (names) => `Protected by an Exorcist: ${names}`,
+  powersActed: (n, total) => `Special guests: ${n} of ${total} have chosen`,
+  powersLabel: 'Special guests',
+  powersLine: (c) => `Auto: ${c.investigator} Investigator${c.investigator === 1 ? '' : 's'} · ${c.exorcist} Exorcist${c.exorcist === 1 ? '' : 's'} · ${c.medium} Medium${c.medium === 1 ? '' : 's'}`,
   verdictOutName: (name) => `${name} is out.`,
   verdictWas: (wasKiller) => (wasKiller ? 'They were a KILLER.' : 'They were an innocent guest.'),
   verdictNone: 'Nobody is eliminated this round.',
 
   killerPicks: (filled) => `Killer picks · ${filled} of 3 slots filled`,
+  roleName: { killer: 'killer', guest: 'guest', investigator: 'investigator', exorcist: 'exorcist', medium: 'medium' },
   wouldDie: (names) => `If you close now: ${names}`,
   tiedSlots: (open, names) => `Tied: ${names}. ${open === 1 ? 'One of them dies' : `${open} of them die`}, picked at random.`,
   noPicksYet: 'No picks yet.',

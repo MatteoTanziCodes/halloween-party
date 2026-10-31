@@ -136,6 +136,7 @@
     const cur = [...selectedPicks()];
     const i = cur.indexOf(id);
     if (i >= 0) cur.splice(i, 1);
+    else if (view.power) cur.splice(0, cur.length, id); // one choice: a new tap replaces it
     else if (cur.length < 3) cur.push(id);
     else return;
     ui.picks = cur;
@@ -249,12 +250,14 @@
   function roleCardNode() {
     const me = view.me;
     const team = view.teammates && view.teammates.length ? view.teammates.map((t) => t.name).join(', ') : COPY.cardKillerAlone;
+    const found = view.findings || [];
     const kids = !me.role
       ? [h('p', {}, COPY.cardNoRole)]
       : [
-          h('div', { class: 'card-role' }, COPY.cardRoleLine(me.role)),
+          h('div', { class: 'card-role' }, COPY.cardRoleLine(me.role, me.power)),
           h('p', { class: 'state' }, me.alive ? COPY.cardAlive : COPY.cardDeath(me.death, me.diedRound)),
-          h('p', {}, me.role === 'killer' ? COPY.cardKiller(team) : COPY.cardGuest),
+          h('p', {}, me.role === 'killer' ? COPY.cardKiller(team) : me.power ? COPY.cardPower[me.power] : COPY.cardGuest),
+          found.length ? h('ul', { class: 'findings' }, found.map((f) => h('li', {}, COPY.finding(f)))) : null,
           me.alive ? null : h('p', {}, COPY.cardDeadTip),
         ];
     return h(
@@ -381,9 +384,11 @@
     const sel = selectedPicks();
     const over = nightOver();
     const mates = new Set((view.teammates || []).map((t) => t.id));
+    const pw = view.power;
     const out = [];
     if (over) out.push(...heading('nightOver'));
     else if (ui.done) out.push(...heading('nightDone'));
+    else if (pw) out.push(h('h1', {}, COPY.powerHeadings[pw.kind]), h('p', { class: 'hint' }, COPY.powerHint));
     else out.push(...heading('night'));
     if (!over) out.push(h('div', { id: 'count', class: 'count', role: 'timer', 'aria-live': 'off' }, clock(remainingMs())));
     out.push(summaryBox());
@@ -391,25 +396,25 @@
       out.push(h('button', { class: 'link', onclick: () => { ui.done = false; requestRender(); } }, COPY.changePicks));
       return out;
     }
+    if (pw && !pw.choices.length) out.push(h('p', { class: 'muted' }, COPY.noSpirits));
+    const blocked = pw ? pw.blocked : null;
     out.push(
       h(
         'div',
         { class: 'list' },
-        view.living
-          .filter((p) => p.id !== view.me.id)
-          .map((p) =>
-            person(p, {
-              sel: sel.includes(p.id),
-              dim: mates.has(p.id),
-              locked: over,
-              num: view.teamPicks && view.teamPicks[p.id] ? view.teamPicks[p.id] : 0,
-              onclick: () => !mates.has(p.id) && togglePick(p.id),
-            }),
-          ),
+        (pw ? pw.choices : view.living.filter((p) => p.id !== view.me.id)).map((p) =>
+          person(p, {
+            sel: sel.includes(p.id),
+            dim: mates.has(p.id) || p.id === blocked,
+            locked: over,
+            num: view.teamPicks && view.teamPicks[p.id] ? view.teamPicks[p.id] : 0,
+            onclick: () => !mates.has(p.id) && p.id !== blocked && togglePick(p.id),
+          }),
+        ),
       ),
     );
     if (!over) {
-      out.push(h('p', { class: 'muted', role: 'status' }, COPY.selected(sel.length)));
+      out.push(h('p', { class: 'muted', role: 'status' }, COPY.selected(sel.length, pw ? 1 : 3)));
       out.push(h('button', { class: 'primary', onclick: () => { ui.done = true; window.scrollTo(0, 0); requestRender(); } }, COPY.done));
     }
     return out;
@@ -442,7 +447,7 @@
       case 'night':
         return nightScreen();
       case 'morning':
-        return [...heading('morning'), roleButton()];
+        return [...heading('morning'), roleButton(), view.me.power ? h('p', { class: 'muted small' }, COPY.morningPower) : null];
       case 'vote':
         return voteScreen();
       case 'verdict':

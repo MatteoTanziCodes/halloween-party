@@ -69,7 +69,11 @@
   // ---- helpers ----
   const nameOf = (id) => (S.players.find((p) => p.id === id) || { name: '?' }).name;
   const player = (id) => S.players.find((p) => p.id === id);
-  const roleTag = (p) => (ui.hide || !p.role ? null : h('span', { class: 'tag ' + p.role }, p.role));
+  const roleTag = (p) => {
+    if (ui.hide || !p.role) return null;
+    const r = p.power || p.role;
+    return h('span', { class: 'tag ' + r }, COPY.roleName[r]);
+  };
   function remainingMs() {
     return S && S.nightEndsAt ? S.nightEndsAt - (Date.now() + skew) : 0;
   }
@@ -79,16 +83,18 @@
   }, 250);
 
   // Who dies if the night closes now, and whether the last slot is a coin flip.
-  function nightOutlook(counts) {
+  // The killers' top picks are chosen first; anyone an Exorcist protects then survives, with no replacement.
+  function nightOutlook(counts, shielded) {
     const ids = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || nameOf(a).localeCompare(nameOf(b)));
     const slots = S.victimsPerNight;
-    if (ids.length <= slots) return { sure: ids, tied: [] };
+    const safe = (list) => list.filter((id) => !shielded.includes(id));
+    if (ids.length <= slots) return { sure: safe(ids), tied: [] };
     const cut = counts[ids[slots - 1]];
     const above = ids.filter((id) => counts[id] > cut);
     const tied = ids.filter((id) => counts[id] === cut);
     return tied.length > slots - above.length
-      ? { sure: above, tied, open: slots - above.length }
-      : { sure: ids.slice(0, slots), tied: [] };
+      ? { sure: safe(above), tied, open: slots - above.length }
+      : { sure: safe(ids.slice(0, slots)), tied: [] };
   }
 
   // ---- photos ----
@@ -291,6 +297,7 @@
         'div',
         { class: 'announce' },
         v.length ? v.map((id) => h('div', { class: 'who' }, avatar(player(id), 72), h('div', { class: 'name' }, nameOf(id)))) : h('div', { class: 'name' }, COPY.victimsNone),
+        S.computed.night.saved.length ? h('div', { class: 'note' }, COPY.savedNote(S.computed.night.saved.length)) : null,
       );
     }
     if (S.phase === 'verdict') {
@@ -367,7 +374,7 @@
     const n = S.computed.night;
     if (S.phase === 'night' && n) {
       const rows = Object.entries(n.killerPicks).sort((a, b) => b[1] - a[1] || nameOf(a[0]).localeCompare(nameOf(b[0])));
-      const look = nightOutlook(n.killerPicks);
+      const look = nightOutlook(n.killerPicks, n.protected);
       out.push(
         h(
           'div',
@@ -376,6 +383,8 @@
           rows.length ? rows.map(([id, c]) => h('div', { class: 'tally' }, h('div', { class: 'line' }, h('span', {}, nameOf(id)), h('span', {}, String(c))))) : h('p', { class: 'muted' }, COPY.noPicksYet),
           look.sure.length ? h('p', {}, COPY.wouldDie(look.sure.map(nameOf).join(', '))) : null,
           look.tied.length ? h('p', { class: 'warning' }, COPY.tiedSlots(look.open, look.tied.map(nameOf).join(' / '))) : null,
+          n.protected.length ? h('p', { class: 'muted' }, COPY.protectedLine(n.protected.map(nameOf).join(', '))) : null,
+          n.powersTotal ? h('p', { class: 'muted small' }, COPY.powersActed(n.powersActed, n.powersTotal)) : null,
         ),
         h(
           'div',
@@ -456,6 +465,7 @@
           S.killerCountOverride === null ? null : h('button', { class: 'link', onclick: () => act('killer-count', { count: null }) }, COPY.useAuto),
         ),
       ),
+      h('div', { class: 'panel' }, h('h3', {}, COPY.powersLabel), h('p', { class: 'small muted' }, COPY.powersLine(kc.powerCounts))),
     ];
   }
 

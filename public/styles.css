@@ -334,6 +334,8 @@ input::placeholder { color: var(--ink-3); }
 .card-role { font-stretch: var(--narrow); font-weight: 800; font-size: var(--t-5); line-height: 1; margin: 0 0 var(--s-3); }
 .rolecard p { font-size: var(--t-2); color: var(--ink-2); }
 .rolecard .state { color: var(--ink); font-weight: 600; }
+.rolecard .findings { margin: var(--s-3) 0 0; padding-left: 1.2em; font-size: var(--t-2); color: var(--ink); }
+.rolecard .findings li + li { margin-top: var(--s-1); }
 
 /* ---- host ---- */
 .topbar {
@@ -387,6 +389,7 @@ input::placeholder { color: var(--ink-3); }
 .tag { font-size: var(--t-1); font-weight: 700; padding: 2px 8px; border-radius: 3px; color: var(--ink-2); border: 1px solid var(--rule-strong); }
 .tag.killer { color: var(--on-signal); background: var(--ember); border-color: var(--ember); }
 .tag.dead { color: var(--ink-3); border-color: var(--rule); }
+.tag.investigator, .tag.exorcist, .tag.medium { color: var(--ink); border-color: var(--ink-2); }
 .switch { display: flex; align-items: center; gap: var(--s-3); font-weight: 500; min-height: var(--tap); }
 .switch input { width: 24px; height: 24px; }
 .sectionhead { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin: var(--s-7) 0 var(--s-2); }

@@ -1,12 +1,16 @@
 // Pure game logic: (state, action) -> new state. No Cloudflare imports.
 import type {
   AwardEntry,
+  Finding,
+  FindingView,
   GameState,
   HostComputed,
   HostView,
   Night,
   Player,
   PlayerView,
+  Power,
+  PowerCounts,
   RevealView,
   SummaryView,
   Vote,
@@ -126,6 +130,32 @@ export function defaultKillerCount(playerCount: number): number {
 export function killerCount(s: GameState): number {
   return s.killerCountOverride ?? defaultKillerCount(s.players.length);
 }
+
+/** Special guests: about 1 Investigator per 12 players and 1 Exorcist and 1 Medium per 18 (35 -> 3/2/2). */
+export function defaultPowerCounts(playerCount: number): PowerCounts {
+  return {
+    investigator: Math.round(playerCount / 12),
+    exorcist: Math.round(playerCount / 18),
+    medium: Math.round(playerCount / 18),
+  };
+}
+
+const POWERS: Power[] = ['investigator', 'exorcist', 'medium'];
+
+/** Who a living power player may choose tonight. Mediums reach murdered players; the others pick the living. */
+function powerChoices(s: GameState, me: Player): Player[] {
+  if (me.power === 'medium') return s.players.filter((p) => p.death === 'murdered');
+  return living(s).filter((p) => p.id !== me.id);
+}
+
+/** An Exorcist can't protect the same person two nights running. */
+function lastProtected(s: GameState, me: Player): string | null {
+  if (me.power !== 'exorcist') return null;
+  const prev = s.nights.find((n) => n.round === s.round - 1);
+  return prev?.actions?.[me.id] ?? null;
+}
+
+const hasPower = (p: Player) => !!p.power && p.alive;
 
 function cleanName(raw: unknown): string {
   if (typeof raw !== 'string') throw new GameError(400, 'Please enter a name.');
@@ -292,9 +322,21 @@ export function start(state: GameState, ctx: Ctx): GameState {
   if (n < MIN_PLAYERS) throw new GameError(409, `Need at least ${MIN_PLAYERS} players to start (have ${n}).`);
   const k = killerCount(state);
   if (k >= n) throw new GameError(409, 'Too many killers for this many players.');
-  const killers = new Set(shuffle(state.players.map((p) => p.id), ctx.rng).slice(0, k));
+  const order = shuffle(state.players.map((p) => p.id), ctx.rng);
+  const killers = new Set(order.slice(0, k));
+  // Powers go to guests only, and never so many that plain guests run out.
+  const guests = order.slice(k);
+  const counts = defaultPowerCounts(n);
+  const powers = new Map<string, Power>();
+  let i = 0;
+  for (const power of POWERS) {
+    for (let c = 0; c < counts[power] && i < guests.length - 1; c++) powers.set(guests[i++], power);
+  }
   return edit(state, (s) => {
-    for (const p of s.players) p.role = killers.has(p.id) ? 'killer' : 'guest';
+    for (const p of s.players) {
+      p.role = killers.has(p.id) ? 'killer' : 'guest';
+      p.power = powers.get(p.id) ?? null;
+    }
     s.phase = 'idle';
   });
 }
@@ -303,7 +345,7 @@ export function openNight(state: GameState, ctx: Ctx): GameState {
   requirePhase(state, 'idle', 'open the night');
   return edit(state, (s) => {
     s.round += 1;
-    s.nights.push({ round: s.round, picks: {}, victims: [], eligible: living(s).map((p) => p.id) });
+    s.nights.push({ round: s.round, picks: {}, victims: [], eligible: living(s).map((p) => p.id), actions: {}, saved: [], findings: {} });
     s.phase = 'night';
     s.nightEndsAt = ctx.now + NIGHT_MS;
   });
@@ -351,10 +393,15 @@ export function closeNight(state: GameState, ctx: Ctx): GameState {
     const night = currentNight(s)!;
     const counts = countKillerPicks(s, night, true);
     const cap = Math.min(s.victimsPerNight, livingGuests(s).length);
-    const victims = shuffle(Object.keys(counts), ctx.rng)
+    const chosen = shuffle(Object.keys(counts), ctx.rng)
       .sort((a, b) => counts[b] - counts[a]) // stable: random order survives among ties
       .slice(0, cap);
+    // A protected player survives; the killers don't get a replacement.
+    const shielded = new Set(protectedTonight(s, night));
+    const victims = chosen.filter((id) => !shielded.has(id));
     night.victims = victims;
+    night.saved = chosen.filter((id) => shielded.has(id));
+    night.findings = resolvePowers(s, night, ctx);
     for (const id of victims) {
       const p = s.players.find((x) => x.id === id)!;
       p.alive = false;
@@ -365,6 +412,48 @@ export function closeNight(state: GameState, ctx: Ctx): GameState {
     s.nightEndsAt = null;
     finishIfWon(s);
   });
+}
+
+function actingPowers(s: GameState, night: Night): [Player, string][] {
+  const out: [Player, string][] = [];
+  for (const [id, target] of Object.entries(night.actions ?? {})) {
+    const p = s.players.find((x) => x.id === id);
+    if (p && hasPower(p) && night.eligible.includes(id)) out.push([p, target]);
+  }
+  return out;
+}
+
+export function protectedTonight(s: GameState, night: Night): string[] {
+  return actingPowers(s, night)
+    .filter(([p]) => p.power === 'exorcist')
+    .map(([, t]) => t);
+}
+
+/** Runs before tonight's victims die, so a power player murdered tonight still gets their result. */
+function resolvePowers(s: GameState, night: Night, ctx: Ctx): Record<string, Finding> {
+  const byId = new Map(s.players.map((p) => [p.id, p]));
+  const out: Record<string, Finding> = {};
+  for (const [me, target] of actingPowers(s, night)) {
+    if (me.power === 'investigator') {
+      out[me.id] = { kind: 'investigator', target, isKiller: byId.get(target)?.role === 'killer' };
+    } else if (me.power === 'exorcist') {
+      out[me.id] = { kind: 'exorcist', target, saved: night.saved?.includes(target) ?? false };
+    } else if (me.power === 'medium') {
+      // The spirit names one person who tapped them the night they died. Killers did, but so did
+      // guests tapping for cover, so it's a strong lead rather than proof.
+      const spirit = byId.get(target);
+      const then = s.nights.find((n) => n.round === spirit?.diedRound);
+      const tappers = then
+        ? Object.entries(then.picks)
+            .filter(([id, ts]) => ts.includes(target) && then.eligible.includes(id) && id !== me.id)
+            .map(([id]) => id)
+            .filter((id) => byId.get(id)?.alive && !night.victims.includes(id))
+        : [];
+      const saw = tappers.length ? tappers[Math.floor(ctx.rng() * tappers.length)] : null;
+      out[me.id] = { kind: 'medium', spirit: target, saw };
+    }
+  }
+  return out;
 }
 
 export function openVote(state: GameState): GameState {
@@ -539,6 +628,20 @@ export function pick(state: GameState, playerId: string, targets: unknown, now: 
   const unique = [...new Set(targets as string[])];
   if (unique.length > state.victimsPerNight) throw new GameError(400, 'Pick up to 3 names.');
   const me = findPlayer(state, playerId);
+  if (hasPower(me)) {
+    if (unique.length > 1) throw new GameError(400, 'Pick one name.');
+    const t = unique[0];
+    if (t !== undefined) {
+      if (!powerChoices(state, me).some((p) => p.id === t)) throw new GameError(400, "You can't pick that player.");
+      if (t === lastProtected(state, me)) throw new GameError(400, 'You protected them last night. Pick someone else.');
+    }
+    return edit(state, (s) => {
+      const n = currentNight(s)!;
+      n.actions ??= {};
+      if (t === undefined) delete n.actions[me.id];
+      else n.actions[me.id] = t;
+    });
+  }
   const alive = new Map(living(state).map((p) => [p.id, p]));
   let accepted: string[];
   if (!me.alive) {
@@ -603,12 +706,30 @@ function buildSummary(s: GameState, me: Player, night: Night): SummaryView {
     }
     return { title: SUMMARY_TEAM_TITLE, items: top.map((id) => ({ id, name: name(id), count: counts[id] })), warning };
   }
-  const mine = night.picks[me.id] ?? [];
+  const mine = hasPower(me) ? myAction(night, me) : (night.picks[me.id] ?? []);
   return {
     title: SUMMARY_MINE_TITLE,
     items: mine.map((id) => ({ id, name: name(id), count: 1 })),
     warning: null,
   };
+}
+
+function myAction(night: Night, me: Player): string[] {
+  const t = night.actions?.[me.id];
+  return t ? [t] : [];
+}
+
+function findingsFor(s: GameState, me: Player): FindingView[] {
+  const name = (id: string) => s.players.find((p) => p.id === id)?.name ?? '?';
+  const out: FindingView[] = [];
+  for (const n of s.nights) {
+    const f = n.findings?.[me.id];
+    if (!f) continue;
+    if (f.kind === 'investigator') out.push({ round: n.round, kind: f.kind, name: name(f.target), isKiller: f.isKiller });
+    else if (f.kind === 'exorcist') out.push({ round: n.round, kind: f.kind, name: name(f.target), saved: f.saved });
+    else out.push({ round: n.round, kind: f.kind, name: name(f.spirit), saw: f.saw ? name(f.saw) : null });
+  }
+  return out;
 }
 
 export function playerByToken(state: GameState, token: string | null | undefined): Player | null {
@@ -637,6 +758,7 @@ export function playerView(state: GameState, playerId: string, now: number): Pla
       name: me.name,
       alive: me.alive,
       role: me.role,
+      power: me.power ?? null,
       death: me.death,
       diedRound: me.diedRound,
       photoVersion: me.photoVersion,
@@ -646,7 +768,19 @@ export function playerView(state: GameState, playerId: string, now: number): Pla
       .slice()
       .sort(byName)
       .map((p) => ({ id: p.id, name: p.name, photoVersion: p.photoVersion, memeVersion: p.memeVersion ?? 0 })),
-    myPicks: night ? (night.picks[me.id] ?? []) : [],
+    power:
+      night && hasPower(me)
+        ? {
+            kind: me.power!,
+            choices: powerChoices(state, me)
+              .slice()
+              .sort(byName)
+              .map((p) => ({ id: p.id, name: p.name, photoVersion: p.photoVersion, memeVersion: p.memeVersion ?? 0 })),
+            blocked: lastProtected(state, me),
+          }
+        : null,
+    findings: findingsFor(state, me),
+    myPicks: night ? (hasPower(me) ? myAction(night, me) : (night.picks[me.id] ?? [])) : [],
     myVote: vote ? (vote.ballots[me.id] ?? null) : null,
     candidates: vote
       ? living(state)
@@ -747,7 +881,14 @@ export function buildReveal(s: GameState): RevealView {
 
   return {
     winner: s.winner,
-    players: s.players.map((p) => ({ id: p.id, name: p.name, role: p.role, photoVersion: p.photoVersion, memeVersion: p.memeVersion ?? 0 })),
+    players: s.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      role: p.role,
+      power: p.power ?? null,
+      photoVersion: p.photoVersion,
+      memeVersion: p.memeVersion ?? 0,
+    })),
     killers: killers.map((k) => ({
       id: k.id,
       fate: k.alive ? 'survived' : k.death === 'voted' ? `voted out in round ${k.diedRound}` : `left in round ${k.diedRound}`,
@@ -782,6 +923,10 @@ export function hostView(state: GameState, now: number): HostView {
               .slice(0, 5)
               .map((id) => ({ id, count: sus[id] })),
             victims: night.victims,
+            protected: protectedTonight(state, night),
+            saved: night.saved ?? [],
+            powersActed: actingPowers(state, night).length,
+            powersTotal: state.players.filter((p) => hasPower(p) && night.eligible.includes(p.id)).length,
           };
         })()
       : null;
@@ -811,6 +956,7 @@ export function hostView(state: GameState, now: number): HostView {
     computed: {
       killerCountAuto: defaultKillerCount(players.length),
       killerCount: killerCount(state),
+      powerCounts: defaultPowerCounts(players.length),
       status: { ...statusLine(state), guestsLeft: livingGuests(state).length },
       night: nightComputed,
       vote: voteComputed,

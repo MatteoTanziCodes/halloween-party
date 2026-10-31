@@ -32,6 +32,23 @@
       ),
     );
 
+    const gifted = R.players.filter((p) => p.power);
+    if (gifted.length) {
+      out.push(h('h2', {}, COPY.reveal.powersTitle));
+      out.push(
+        h(
+          'div',
+          { class: 'list' },
+          gifted.map((p) =>
+            MP.holdForMeme(
+              h('div', { class: 'row static' }, avatar(p, 52), h('span', { class: 'nm' }, p.name), h('span', { class: 'fate' }, COPY.reveal.powerName[p.power])),
+              p,
+            ),
+          ),
+        ),
+      );
+    }
+
     const A = R.awards;
     const awards = [
       ['bestDetective', (e) => COPY.reveal.detective(e.value)],
