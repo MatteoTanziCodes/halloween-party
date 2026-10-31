@@ -696,6 +696,14 @@ export function castVote(state: GameState, voterId: string, target: unknown): Ga
 
 // ---- views -------------------------------------------------------------------
 
+/** What phones see. A killer the host removed still counts, so a removal doesn't reveal their role. */
+function publicStatus(s: GameState): { livingCount: number; killersLeft: number } {
+  const st = statusLine(s);
+  if (s.phase === 'lobby' || s.phase === 'ended') return st;
+  const removedKillers = s.players.filter((p) => p.role === 'killer' && p.death === 'removed').length;
+  return { ...st, killersLeft: st.killersLeft + removedKillers };
+}
+
 function statusLine(s: GameState): { livingCount: number; killersLeft: number } {
   if (s.phase === 'lobby') return { livingCount: s.players.length, killersLeft: killerCount(s) };
   return { livingCount: living(s).length, killersLeft: livingKillers(s).length };
@@ -812,7 +820,7 @@ export function playerView(state: GameState, playerId: string, now: number): Pla
     summary: night ? buildSummary(state, me, night) : null,
     nightEndsAt: state.nightEndsAt,
     serverNow: now,
-    status: statusLine(state),
+    status: publicStatus(state),
     winner: state.winner,
     reveal: state.phase === 'ended' ? buildReveal(state) : null,
   };

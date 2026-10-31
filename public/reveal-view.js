@@ -8,7 +8,7 @@
     return h('div', { class: 'faces', 'aria-hidden': 'true' }, shown.map((p) => avatar(p, 48)), extra > 0 ? h('div', { class: 'more' }, '+' + extra) : null);
   }
 
-  // Everyone on a team, minus anyone voted out. Murdered players still win or lose with their team.
+  // Everyone on a team, minus anyone voted out or who left. Murdered players still win or lose with their team.
   function teamGrid(people) {
     return h(
       'div',
@@ -27,7 +27,7 @@
     out.push(h('h1', { class: 'win' }, COPY.reveal.winner(R.winner)));
     out.push(h('p', { class: 'hint' }, COPY.reveal.lead(R.killers.length)));
 
-    const counted = R.players.filter((p) => p.role && p.death !== 'voted').sort((a, b) => a.name.localeCompare(b.name));
+    const counted = R.players.filter((p) => p.role && p.death !== 'voted' && p.death !== 'removed').sort((a, b) => a.name.localeCompare(b.name));
     const winTeam = R.winner === 'killers' ? 'killer' : 'guest';
     const winners = counted.filter((p) => p.role === winTeam);
     const losers = counted.filter((p) => p.role !== winTeam);

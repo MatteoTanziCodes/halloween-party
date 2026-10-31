@@ -396,7 +396,6 @@
     const out = [];
     if (over) out.push(...heading('nightOver'));
     else if (ui.done) out.push(...heading('nightDone'));
-    else if (pw) out.push(h('h1', {}, COPY.powerHeadings[pw.kind]), h('p', { class: 'hint' }, COPY.powerHint));
     else out.push(...heading('night'));
     if (!over) out.push(h('div', { id: 'count', class: 'count', role: 'timer', 'aria-live': 'off' }, clock(remainingMs())));
     out.push(summaryBox());
@@ -422,7 +421,7 @@
       ),
     );
     if (!over) {
-      out.push(h('p', { class: 'muted', role: 'status' }, COPY.selected(sel.length, pw ? 1 : 3)));
+      out.push(h('p', { class: 'muted', role: 'status' }, COPY.selected(sel.length)));
       out.push(h('button', { class: 'primary', onclick: () => { ui.done = true; window.scrollTo(0, 0); requestRender(); } }, COPY.done));
     }
     return out;
@@ -455,7 +454,7 @@
       case 'night':
         return nightScreen();
       case 'morning':
-        return [...heading('morning'), roleButton(), view.me.power && view.me.alive ? h('p', { class: 'muted small' }, COPY.morningPower) : null];
+        return [...heading('morning'), roleButton(), view.me.alive ? h('p', { class: 'muted small' }, COPY.morningCheck) : null];
       case 'vote':
         return voteScreen();
       case 'verdict':

@@ -325,7 +325,7 @@
         'div',
         { class: 'announce' },
         h('div', { class: 'who' }, avatar(p, 72), h('div', { class: 'name' }, COPY.verdictOutName(p.name))),
-        h('div', { class: 'note' }, COPY.verdictWas(p.role === 'killer', p.power)),
+        h('div', { class: 'note' }, COPY.verdictWas(p.role === 'killer', ui.hide ? null : p.power)),
       );
     }
     return null;
@@ -389,7 +389,16 @@
   function phasePanel() {
     const out = [];
     const n = S.computed.night;
-    if (S.phase === 'night' && n) {
+    if (S.phase === 'night' && n && ui.hide) {
+      out.push(
+        h(
+          'div',
+          { class: 'panel' },
+          h('p', { class: 'muted' }, COPY.picksHidden),
+          n.powersTotal ? h('p', { class: 'muted small' }, COPY.powersActed(n.powersActed, n.powersTotal)) : null,
+        ),
+      );
+    } else if (S.phase === 'night' && n) {
       const rows = Object.entries(n.killerPicks).sort((a, b) => b[1] - a[1] || nameOf(a[0]).localeCompare(nameOf(b[0])));
       const look = nightOutlook(n.killerPicks, n.protected);
       out.push(

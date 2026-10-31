@@ -30,7 +30,7 @@ window.COPY = {
 
   headings: {
     idle: 'Nothing to do right now',
-    night: 'Tap up to 3 names.',
+    night: 'Tap your names.',
     nightDone: 'Picks saved.',
     nightOver: "Night's over.",
     morning: 'Listen to the host.',
@@ -41,7 +41,7 @@ window.COPY = {
 
   hints: {
     idle: 'Enjoy the party. The host will call night soon.',
-    night: 'Then tap Done. Keep your phone out until the timer hits zero.',
+    night: "Your role card says who and how many. Then tap Done, and keep your phone out until the timer hits zero.",
     nightDone: 'Keep your phone out until the timer ends.',
     nightOver: 'Picks locked. Listen to the host.',
     morning: 'Listen to the host for who died.',
@@ -50,18 +50,10 @@ window.COPY = {
     verdict: "Listen to the host for who's out.",
   },
 
-  selected: (n, max) => `${n} of ${max} selected.`,
-
-  // Special guests: the night list shows one choice instead of three, so from across the room
-  // their phone looks the same as everyone else's.
-  powerHeadings: {
-    investigator: 'Pick one person to investigate.',
-    exorcist: 'Pick one person to protect.',
-    medium: 'Pick one spirit to contact.',
-  },
-  powerHint: 'Then tap Done. Your answer comes in the morning: hold the role button to see it.',
-  noSpirits: 'Nobody has been murdered yet, so there are no spirits to reach. Just tap Done.',
-  morningPower: 'Hold the button to see what you learned last night.',
+  // The same words on every phone at night, so nobody's screen gives their role away.
+  selected: (n) => `${n} selected.`,
+  noSpirits: 'Nobody to pick tonight. Just tap Done.',
+  morningCheck: 'Hold the button to check your role card.',
   done: 'Done',
   changePicks: 'Change picks',
   voteYours: (name) => `Your vote: ${name}. Tap another name to change it.`,
@@ -80,7 +72,7 @@ window.COPY = {
   helpClose: 'Got it',
 
   cardLabel: 'Your role',
-  cardGuest: 'Find the killers. At night, tap the people you suspect. At the trial, vote out whoever you think is a killer.',
+  cardGuest: 'Find the killers. At night, tap up to 3 people you suspect. At the trial, vote out whoever you think is a killer.',
   cardKiller: (names) =>
     `Your team: ${names}. At night, tap up to 3 people to kill. The Team picks box shows your team's top 3 right now, so agree on the same 3 before the timer runs out. Act normal and never pick each other.`,
   cardKillerAlone: 'just you',
@@ -88,11 +80,11 @@ window.COPY = {
     role === 'killer' ? "You're a KILLER" : power ? `You're the ${power.toUpperCase()}` : "You're a GUEST",
   cardPower: {
     investigator:
-      "You're a guest with a gift. Each night, pick one person to investigate. In the morning you'll learn if they're a killer. Share carefully: the killers will come for you.",
+      "You're a guest with a gift. Each night, tap just one person to investigate. In the morning you'll learn if they're a killer. Share carefully: the killers will come for you.",
     exorcist:
-      "You're a guest with a gift. Each night, pick one person to protect. If the killers go for them, they survive. You can't protect yourself, or the same person two nights running.",
+      "You're a guest with a gift. Each night, tap just one person to protect. If the killers go for them, they survive. You can't protect yourself, or the same person two nights running.",
     medium:
-      "You're a guest with a gift. Each night, pick one murdered player to contact. Their spirit names someone who tapped them the night they died. Killers did, but so did guests, so it's a lead, not proof.",
+      "You're a guest with a gift. Each night, tap just one murdered player to contact (your list shows only them). Their spirit names someone who tapped them the night they died. Killers did, but so did guests, so it's a lead, not proof.",
   },
   finding: (f) => {
     const r = `Round ${f.round}: `;
@@ -161,7 +153,7 @@ window.COPY = {
       items: [
         "You're the narrator, not a player. You see everyone's role, so don't play.",
         "The 'Do this now' line at the top always says what to do next, and the big button below it does it.",
-        "Keep 'Hide roles' on whenever guests can see your screen.",
+        "Keep 'Hide roles' on whenever guests can see your screen. It also hides the killers' picks and who's protected; turn it off for a private look.",
       ],
     },
     {
@@ -188,7 +180,7 @@ window.COPY = {
       items: [
         'Guests win the moment every killer is voted out.',
         'Killers win the moment they equal or outnumber the guests, or if any killer is still alive after round 5.',
-        "When it ends, every phone shows the reveal: the winners, the losers (voted-out players aren't on either list), the killers, the special guests and awards. Read it out.",
+        "When it ends, every phone shows the reveal: the winners, the losers (players who were voted out or left aren't on either list), the killers, the special guests and awards. Read it out.",
       ],
     },
     {
@@ -204,7 +196,7 @@ window.COPY = {
       title: 'When something goes wrong',
       items: [
         "Phone died or someone closed the tab: open them in the player list, tap Rejoin, and have them scan the code. Their role carries over.",
-        "Someone leaves: open them and tap Remove. They count as dead. Every phone's 'killers left' count updates, so tell the room whether they were a killer.",
+        "Someone leaves: open them and tap Remove. They count as dead. Phones keep counting them in 'killers left', so nobody learns their role; your screen shows the real count.",
         "Tapped the wrong button: tap Undo right under the big button. It goes back one step. Undoing Close night reopens the night with at least 30 seconds on the clock. Undo isn't available after you remove someone.",
         'Need to stop early: End game now (in Danger zone). The winner is decided by who is left.',
       ],
@@ -277,6 +269,7 @@ window.COPY = {
   noPicksYet: 'No picks yet.',
   suspectsTitle: 'Most suspected (for fun)',
   noSuspects: 'No suspicion taps yet.',
+  picksHidden: "Picks are hidden. Turn off 'Hide roles' (below) to see who the killers picked and who's protected.",
   voted: (n, total) => `${n} of ${total} have voted`,
   tie: (names) => `Tie: ${names}`,
 
