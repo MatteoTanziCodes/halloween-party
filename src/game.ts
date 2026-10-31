@@ -272,7 +272,13 @@ export function removePlayer(state: GameState, id: string): GameState {
     q.diedRound = s.round;
     if (s.phase === 'night') {
       const n = currentNight(s);
-      if (n) delete n.picks[id];
+      if (n) {
+        delete n.picks[id];
+        delete n.actions?.[id];
+        // Drop them from everyone else's picks too, so phones aren't left holding a name that can't be saved.
+        for (const [picker, ts] of Object.entries(n.picks)) n.picks[picker] = ts.filter((t) => t !== id);
+        for (const [picker, t] of Object.entries(n.actions ?? {})) if (t === id) delete n.actions![picker];
+      }
     }
     if (s.phase === 'vote') {
       const v = currentVote(s);
@@ -284,6 +290,7 @@ export function removePlayer(state: GameState, id: string): GameState {
       }
     }
     finishIfWon(s);
+    s.undoLabel = null; // undoing past a removal would bring them back
   });
 }
 
@@ -321,7 +328,8 @@ export function start(state: GameState, ctx: Ctx): GameState {
   const n = state.players.length;
   if (n < MIN_PLAYERS) throw new GameError(409, `Need at least ${MIN_PLAYERS} players to start (have ${n}).`);
   const k = killerCount(state);
-  if (k >= n) throw new GameError(409, 'Too many killers for this many players.');
+  // Killers win the moment they match the guests, so they must start outnumbered.
+  if (k >= n - k) throw new GameError(409, `Too many killers: with ${n} players, use at most ${Math.ceil(n / 2) - 1}.`);
   const order = shuffle(state.players.map((p) => p.id), ctx.rng);
   const killers = new Set(order.slice(0, k));
   // Powers go to guests only, and never so many that plain guests run out.
@@ -587,9 +595,12 @@ export function applyTransition(state: GameState, name: TransitionName, ctx: Ctx
   return { ...next, undoLabel: UNDO_LABELS[name] };
 }
 
-export function undo(current: GameState, snapshot: GameState | null): GameState {
+export function undo(current: GameState, snapshot: GameState | null, now: number): GameState {
   if (!snapshot || !current.undoLabel) throw new GameError(409, 'Nothing to undo.');
-  return { ...structuredClone(snapshot), version: current.version + 1, undoLabel: null };
+  const s: GameState = { ...structuredClone(snapshot), version: current.version + 1, undoLabel: null };
+  // Undoing Close night reopens the night; give phones time to change picks instead of an expired timer.
+  if (s.phase === 'night') s.nightEndsAt = Math.max(s.nightEndsAt ?? 0, now + EXTEND_MS);
+  return s;
 }
 
 export function resetGame(state: GameState, confirm: unknown, now: number): GameState {
@@ -628,6 +639,12 @@ export function pick(state: GameState, playerId: string, targets: unknown, now: 
   const unique = [...new Set(targets as string[])];
   if (unique.length > state.victimsPerNight) throw new GameError(400, 'Pick up to 3 names.');
   const me = findPlayer(state, playerId);
+  if (me.alive && !hasPower(me)) {
+    // A phone can still hold a name the host removed a moment ago; ignore it rather than reject every pick.
+    // Power players pick one name, which a new tap replaces, so they keep the strict check below.
+    const gone = new Set(state.players.filter((p) => !p.alive).map((p) => p.id));
+    unique.splice(0, unique.length, ...unique.filter((t) => !gone.has(t)));
+  }
   if (hasPower(me)) {
     if (unique.length > 1) throw new GameError(400, 'Pick one name.');
     const t = unique[0];
@@ -911,7 +928,7 @@ export function hostView(state: GameState, now: number): HostView {
   const nightComputed: HostComputed['night'] =
     night && state.round > 0
       ? (() => {
-          const counts = countKillerPicks(state, night, false);
+          const counts = countKillerPicks(state, night, true);
           const sus = suspicionCounts(state, night);
           const nm = (id: string) => state.players.find((p) => p.id === id)?.name ?? '';
           return {

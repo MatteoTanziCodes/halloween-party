@@ -180,7 +180,7 @@ export class GameDO extends DurableObject<Env> {
         return json({ ok: true });
       case 'undo': {
         const snapshot = (await this.ctx.storage.get<GameState>('undo')) ?? null;
-        const next = undo(this.state, snapshot);
+        const next = undo(this.state, snapshot, now);
         await this.save(next);
         await this.ctx.storage.delete('undo');
         return json({ ok: true });

@@ -18,6 +18,7 @@
     joinError: '',
     lost: false,
     lastPhase: null,
+    lastRound: null,
     holding: false,
     joining: false,
     wasOver: false,
@@ -68,11 +69,13 @@
       setTitle(view.title);
       if (!saving) ui.picks = null;
       if (votesInFlight === 0) ui.vote = null;
-      if (view.phase !== ui.lastPhase) {
+      // A phone asleep through a whole round can see night -> night; the round number still tells them apart.
+      if (view.phase !== ui.lastPhase || view.round !== ui.lastRound) {
         ui.done = false;
         ui.picks = null;
         ui.vote = null;
         ui.lastPhase = view.phase;
+        ui.lastRound = view.round;
       }
       ui.wasOver = nightOver();
       requestRender();
@@ -452,7 +455,7 @@
       case 'night':
         return nightScreen();
       case 'morning':
-        return [...heading('morning'), roleButton(), view.me.power ? h('p', { class: 'muted small' }, COPY.morningPower) : null];
+        return [...heading('morning'), roleButton(), view.me.power && view.me.alive ? h('p', { class: 'muted small' }, COPY.morningPower) : null];
       case 'vote':
         return voteScreen();
       case 'verdict':

@@ -74,7 +74,7 @@ window.COPY = {
     'When the host calls night, tap up to 3 names. Everyone does this, so nobody looks suspicious. Special guests tap just one.',
     'The host announces who died. Then everyone argues and votes someone out.',
     'If you die, keep partying, but no hints and no voting.',
-    'Guests win by voting out every killer. Killers win if they last until the end.',
+    'Guests win by voting out every killer. Killers win if they last 5 rounds, or if they ever equal the guests.',
     "Hold down on anyone's name to see their meme costume.",
   ],
   helpClose: 'Got it',
@@ -204,8 +204,8 @@ window.COPY = {
       title: 'When something goes wrong',
       items: [
         "Phone died or someone closed the tab: open them in the player list, tap Rejoin, and have them scan the code. Their role carries over.",
-        'Someone leaves: open them and tap Remove. They count as dead.',
-        'Tapped the wrong button: tap Undo right under the big button. It goes back one step.',
+        "Someone leaves: open them and tap Remove. They count as dead. Every phone's 'killers left' count updates, so tell the room whether they were a killer.",
+        "Tapped the wrong button: tap Undo right under the big button. It goes back one step. Undoing Close night reopens the night with at least 30 seconds on the clock. Undo isn't available after you remove someone.",
         'Need to stop early: End game now (in Danger zone). The winner is decided by who is left.',
       ],
     },
@@ -253,7 +253,7 @@ window.COPY = {
   timeUp: "Time's up",
   needPlayers: 'Need at least 4 players.',
 
-  undoConfirm: (label) => `Undo ${label}? Players eliminated by it come back.`,
+  undoConfirm: (label) => `Undo ${label}? The game goes back to just before it. Anyone it eliminated comes back, and picks or votes made since then are cleared.`,
   undoStartWarn: 'Players have already seen their roles. Starting again gives new roles.',
 
   victimsNone: 'Nobody died.',

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1029">
+  <title>Murder on the Mews · Poster</title>
+  <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .poster { text-align: center; padding: var(--s-6) 0; }
+    .poster h1 { font-size: clamp(40px, 9vw, 88px); margin: 0 0 var(--s-3); }
+    .poster .sub { font-size: var(--t-4); margin: 0 0 var(--s-6); color: var(--ink-2); }
+    .poster .qr { width: min(80vw, 520px); margin: 0 auto; padding: 16px; background: #fff; border-radius: 8px; }
+    .poster .qr svg { display: block; width: 100%; height: auto; }
+    .poster .url { margin-top: var(--s-4); font-size: var(--t-3); color: var(--ink-2); word-break: break-all; }
+    .poster .print { margin-top: var(--s-6); }
+    @media print {
+      body { background: #fff; color: #000; }
+      .poster h1, .poster .sub, .poster .url { color: #000; }
+      .poster .print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/copy.js"></script>
+  <script src="/qrcode.js"></script>
+  <script src="/common.js"></script>
+  <script>
+    // Printable join poster: the game name and a big QR code to the join page.
+    (function () {
+      const { h, api, qrSvg } = MP;
+      const url = location.origin + '/';
+      function render(title) {
+        document.title = title + ' · Poster';
+        const qr = h('div', { class: 'qr', role: 'img', 'aria-label': 'Join QR code' });
+        qr.innerHTML = qrSvg(url, 10);
+        document.getElementById('app').replaceChildren(
+          h(
+            'div',
+            { class: 'poster' },
+            h('h1', {}, title),
+            h('p', { class: 'sub' }, COPY.posterTitle),
+            qr,
+            h('p', { class: 'url' }, url),
+            h('button', { class: 'primary print', onclick: () => window.print() }, COPY.printPoster),
+          ),
+        );
+      }
+      render(COPY.defaultTitle);
+      api('/api/info').then((info) => render(info.title || COPY.defaultTitle)).catch(() => {});
+    })();
+  </script>
+</body>
+</html>
