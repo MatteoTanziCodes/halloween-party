@@ -93,10 +93,13 @@
   function schedule() {
     clearTimeout(pollTimer);
     if (!token || document.hidden) return;
-    let ms = 20000;
+    // Between phases phones still check every few seconds, so night and voting open on every
+    // phone within moments of the host tapping. Once the game is over there's nothing to wait for.
+    let ms = 3000;
     if (view) {
       if (view.phase === 'night') ms = view.teamPicks ? 2000 : 3000;
-      else if (view.phase === 'vote') ms = 3000;
+      else if (view.phase === 'lobby') ms = 5000;
+      else if (view.phase === 'ended') ms = 20000;
     }
     pollTimer = setTimeout(poll, ms);
   }

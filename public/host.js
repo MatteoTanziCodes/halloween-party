@@ -168,6 +168,7 @@
   // ---- sheets ----
   function closeAll() {
     ui.help = false;
+    ui.rules = false;
     ui.queue = false;
     ui.modal = null;
     storage.set('mp_host_help_seen', '1');
@@ -175,7 +176,22 @@
   }
 
   function helpSheet() {
-    return sheet(COPY.hostHelpTitle, [h('p', {}, COPY.hostHelp), h('button', { class: 'primary', onclick: closeAll }, COPY.helpClose)], closeAll);
+    return sheet(
+      COPY.hostHelpTitle,
+      [
+        ...COPY.hostGuide.flatMap((g) => [h('h2', {}, g.title), h('ul', { class: 'guide' }, g.items.map((t) => h('li', {}, t)))]),
+        h('div', { class: 'stack' }, h('button', { class: 'primary', onclick: closeAll }, COPY.helpClose), h('button', { onclick: () => { ui.help = false; ui.rules = true; requestRender(); } }, COPY.rulesButton)),
+      ],
+      closeAll,
+    );
+  }
+
+  function rulesSheet() {
+    return sheet(
+      COPY.rulesTitle,
+      [h('div', { class: 'speech' }, COPY.rulesSpeech.map((t) => h('p', {}, t))), h('button', { class: 'primary', onclick: closeAll }, COPY.close)],
+      closeAll,
+    );
   }
 
   function queueSheet() {
@@ -278,6 +294,7 @@
       case 'verdict': {
         const v = lastVote();
         line = v && v.eliminated ? t.verdict(nameOf(v.eliminated), player(v.eliminated).role === 'killer') : t.verdictNone;
+        if (S.round >= S.totalRounds) line += t.lastRound;
         break;
       }
     }
@@ -308,7 +325,7 @@
         'div',
         { class: 'announce' },
         h('div', { class: 'who' }, avatar(p, 72), h('div', { class: 'name' }, COPY.verdictOutName(p.name))),
-        h('div', { class: 'note' }, COPY.verdictWas(p.role === 'killer')),
+        h('div', { class: 'note' }, COPY.verdictWas(p.role === 'killer', p.power)),
       );
     }
     return null;
@@ -347,7 +364,7 @@
         break;
       }
       case 'verdict':
-        nodes.push(h('button', { class: 'primary', onclick: () => act('next-round') }, P.verdict));
+        nodes.push(h('button', { class: 'primary', onclick: () => act('next-round') }, S.round >= S.totalRounds ? P.verdictLast : P.verdict));
         break;
     }
     if (S.undoLabel) {
@@ -466,6 +483,7 @@
         ),
       ),
       h('div', { class: 'panel' }, h('h3', {}, COPY.powersLabel), h('p', { class: 'small muted' }, COPY.powersLine(kc.powerCounts))),
+      h('button', { onclick: () => { ui.rules = true; requestRender(); } }, COPY.rulesButton),
     ];
   }
 
@@ -547,6 +565,7 @@
     ].filter(Boolean);
     root.replaceChildren(...nodes);
     if (ui.help) root.append(helpSheet());
+    else if (ui.rules) root.append(rulesSheet());
     else if (ui.queue) root.append(queueSheet());
     else if (ui.modal) root.append(ui.modal());
     window.scrollTo(0, scroll);

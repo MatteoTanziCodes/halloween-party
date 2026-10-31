@@ -154,20 +154,86 @@ window.COPY = {
   hostPinWrong: 'Wrong PIN.',
   hostHelpTitle: 'How hosting works',
   hostHelpLabel: 'How hosting works',
-  hostHelp:
-    "You're the narrator, not a player. The big button is always your next step. Keep 'Hide roles' on when guests are nearby. If someone's phone dies, open them in the player list and tap Rejoin. If someone leaves, tap Remove.",
+  // The host guide: what the host needs to know, in the order they need it.
+  hostGuide: [
+    {
+      title: 'Your job',
+      items: [
+        "You're the narrator, not a player. You see everyone's role, so don't play.",
+        "The 'Do this now' line at the top always says what to do next, and the big button below it does it.",
+        "Keep 'Hide roles' on whenever guests can see your screen.",
+      ],
+    },
+    {
+      title: 'Before you start',
+      items: [
+        'Put the join QR code where people can scan it (Print poster makes a big one). Everyone joins on their own phone.',
+        'Optional: tap Add photos to snap each guest, so faces show next to names.',
+        'Check the player count matches the room. Killers and special guests are set automatically from it (you can change the killer count).',
+        "Gather everyone and read the rules speech (button below), then tap Start game. Once you start, nobody else can join.",
+      ],
+    },
+    {
+      title: 'Each round',
+      items: [
+        "Night: say 'Night has fallen, phones out', tap Open night. Everyone taps names for 60 seconds. Wait for the timer, then tap Close night. Tap +30s if the killers or special guests clearly need longer.",
+        'Morning: read out who died. If an Exorcist saved someone, read the line shown, but never say who.',
+        'Then give everyone about 10 minutes to argue, and tap Open vote.',
+        "Vote: everyone alive votes on their phone. Call 'last 30 seconds', then tap Close vote. On a tie, choose Revote between the tied players, or No elimination.",
+        "Verdict: announce who's out and whether they were a killer. Then tap Next round.",
+      ],
+    },
+    {
+      title: 'How it ends',
+      items: [
+        'Guests win the moment every killer is voted out.',
+        'Killers win the moment they equal or outnumber the guests, or if any killer is still alive after round 5.',
+        "When it ends, every phone shows the reveal: the winners, the losers (voted-out players aren't on either list), the killers, the special guests and awards. Read it out.",
+      ],
+    },
+    {
+      title: 'Special guests',
+      items: [
+        "Some guests get a secret power. At night they pick one name instead of three, so nobody can tell from across the room. Their result appears in the morning when they hold their role button. You don't need to do anything for them.",
+        'Investigator: learns whether the person they picked is a killer.',
+        "Exorcist: protects one person. If the killers pick them, they survive and the killers don't get a replacement. Can't protect themselves, or the same person two nights running.",
+        "Medium: picks a murdered player and learns the name of someone who tapped them the night they died. Usually a killer, but guests tap for cover too, so it's a lead, not proof.",
+      ],
+    },
+    {
+      title: 'When something goes wrong',
+      items: [
+        "Phone died or someone closed the tab: open them in the player list, tap Rejoin, and have them scan the code. Their role carries over.",
+        'Someone leaves: open them and tap Remove. They count as dead.',
+        'Tapped the wrong button: tap Undo right under the big button. It goes back one step.',
+        'Need to stop early: End game now (in Danger zone). The winner is decided by who is left.',
+      ],
+    },
+  ],
+  rulesButton: 'Rules speech',
+  rulesTitle: 'Read this aloud',
+  rulesSpeech: [
+    "Welcome to the murder party. Some of you are secretly killers. Everyone else is a guest, and a few guests have a secret power.",
+    "When I start the game, hold the button on your phone to see your role. Don't show anyone. You can check it again any time.",
+    "Each round has a night and a trial. At night, I'll say 'phones out' and everyone taps up to 3 names. Killers tap who they want dead. Guests tap whoever they suspect. Everyone does it, so nobody looks suspicious.",
+    "Special guests tap just one name: the Investigator checks if someone is a killer, the Exorcist protects someone, and the Medium talks to a murdered player's spirit. They see their answer in the morning.",
+    "In the morning I'll announce who died. Then you argue, accuse and defend, and everyone alive votes one person out. I'll tell you if they were a killer.",
+    "If you die, keep partying, but no hints, no voting and no talking about the game.",
+    "Guests win by voting out every killer. Killers win if they last 5 rounds, or if they ever equal the guests. Good luck.",
+  ],
 
   doThisLabel: 'Do this now',
   doThis: {
-    lobby: 'Guests are joining. At 8:00, give the rules speech, check the player count, then tap Start.',
+    lobby: 'Guests are joining. When everyone is in, check the player count, read the rules speech (below), then tap Start game.',
     idle: "Free time. When it's time for the next round, say 'Night has fallen, phones out,' then tap Open night.",
-    night: 'Wait for the countdown to hit zero, then tap Close night. Tap +30s if the killers clearly need more time.',
+    night: 'Wait for the countdown to hit zero, then tap Close night. Tap +30s if the killers or special guests clearly need more time.',
     nightWarn: "Killers haven't picked 3 people yet. If you close now, fewer than 3 people die.",
-    morning: 'Gather everyone and read out these names. Give them 10 minutes to argue, then tap Open vote.',
+    morning: "Gather everyone and read out who died. Remind special guests to check their role button. Give everyone 10 minutes to argue, then tap Open vote.",
     vote: "Call 'last 30 seconds,' then tap Close vote.",
     voteTie: "It's a tie. Revote between them, or skip this round's elimination.",
     verdict: (name, wasKiller) =>
       `Announce: '${name} is out, and they were ${wasKiller ? 'a killer' : 'innocent'}.' Then tap Next round.`,
+    lastRound: ' This was the last round, so Next round ends the game.',
     verdictNone: "Announce: 'Nobody is eliminated this round.' Then tap Next round.",
     ended: "Everyone's phone now shows the reveal. Read out the killers, then the awards.",
   },
@@ -179,6 +245,7 @@ window.COPY = {
     morning: 'Open vote',
     vote: 'Close vote',
     verdict: 'Next round',
+    verdictLast: 'End game and show reveal',
   },
   revote: 'Revote between tied players',
   noElimination: 'No elimination this round',
@@ -197,9 +264,10 @@ window.COPY = {
   protectedLine: (names) => `Protected by an Exorcist: ${names}`,
   powersActed: (n, total) => `Special guests: ${n} of ${total} have chosen`,
   powersLabel: 'Special guests',
-  powersLine: (c) => `Auto: ${c.investigator} Investigator${c.investigator === 1 ? '' : 's'} · ${c.exorcist} Exorcist${c.exorcist === 1 ? '' : 's'} · ${c.medium} Medium${c.medium === 1 ? '' : 's'}`,
+  powersLine: (c) => `Set by player count: ${c.investigator} Investigator${c.investigator === 1 ? '' : 's'} · ${c.exorcist} Exorcist${c.exorcist === 1 ? '' : 's'} · ${c.medium} Medium${c.medium === 1 ? '' : 's'}`,
   verdictOutName: (name) => `${name} is out.`,
-  verdictWas: (wasKiller) => (wasKiller ? 'They were a KILLER.' : 'They were an innocent guest.'),
+  verdictWas: (wasKiller, power) =>
+    wasKiller ? 'They were a KILLER.' : power ? `They were innocent: the ${power.toUpperCase()}.` : 'They were an innocent guest.',
   verdictNone: 'Nobody is eliminated this round.',
 
   killerPicks: (filled) => `Killer picks · ${filled} of 3 slots filled`,

@@ -328,6 +328,9 @@ input::placeholder { color: var(--ink-3); }
 .overlay h1 { margin-top: 0; }
 .overlay ol { padding-left: 22px; margin: 0 0 var(--s-5); }
 .overlay li { margin: var(--s-3) 0; color: var(--ink-2); }
+.overlay h2 { margin: var(--s-5) 0 0; }
+.overlay .guide { padding-left: 20px; margin: 0; }
+.overlay .speech p { font-size: var(--t-3); line-height: 1.45; margin: 0 0 var(--s-4); }
 
 /* The role card is small on purpose: it is read at arm's length, not across the room. */
 .rolecard { border-top: 3px solid var(--signal); padding-top: var(--s-4); max-width: 340px; }
