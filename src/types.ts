@@ -109,7 +109,15 @@ export interface AwardEntry {
 
 export interface RevealView {
   winner: Winner | null;
-  players: { id: string; name: string; role: Role | null; power: Power | null; photoVersion: number; memeVersion: number }[];
+  players: {
+    id: string;
+    name: string;
+    role: Role | null;
+    power: Power | null;
+    death: Death | null;
+    photoVersion: number;
+    memeVersion: number;
+  }[];
   killers: { id: string; fate: string }[];
   rounds: {
     round: number;

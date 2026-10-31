@@ -8,6 +8,15 @@
     return h('div', { class: 'faces', 'aria-hidden': 'true' }, shown.map((p) => avatar(p, 48)), extra > 0 ? h('div', { class: 'more' }, '+' + extra) : null);
   }
 
+  // Everyone on a team, minus anyone voted out. Murdered players still win or lose with their team.
+  function teamGrid(people) {
+    return h(
+      'div',
+      { class: 'people' },
+      people.map((p) => MP.holdForMeme(h('div', { class: 'person' }, avatar(p, 48), h('span', { class: 'nm' }, p.name)), p)),
+    );
+  }
+
   function renderReveal(R) {
     const by = new Map(R.players.map((p) => [p.id, p]));
     const P = (id) => by.get(id) || { id, name: '?', photoVersion: 0, role: null };
@@ -17,6 +26,15 @@
     const out = [];
     out.push(h('h1', { class: 'win' }, COPY.reveal.winner(R.winner)));
     out.push(h('p', { class: 'hint' }, COPY.reveal.lead(R.killers.length)));
+
+    const counted = R.players.filter((p) => p.role && p.death !== 'voted').sort((a, b) => a.name.localeCompare(b.name));
+    const winTeam = R.winner === 'killers' ? 'killer' : 'guest';
+    const winners = counted.filter((p) => p.role === winTeam);
+    const losers = counted.filter((p) => p.role !== winTeam);
+    out.push(h('h2', {}, COPY.reveal.winnersTitle(winners.length)));
+    out.push(winners.length ? teamGrid(winners) : h('p', { class: 'muted' }, COPY.reveal.nobody));
+    out.push(h('h2', {}, COPY.reveal.losersTitle(losers.length)));
+    out.push(losers.length ? teamGrid(losers) : h('p', { class: 'muted' }, COPY.reveal.nobody));
 
     out.push(h('h2', {}, COPY.reveal.killers(R.killers.length)));
     out.push(

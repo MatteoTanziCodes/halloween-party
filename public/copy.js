@@ -140,6 +140,8 @@ window.COPY = {
     howVoted: (n) => `How everyone voted (${n})`,
     votedFor: 'voted for',
     killerMark: ' (killer)',
+    winnersTitle: (n) => `Winners (${n})`,
+    losersTitle: (n) => `Losers (${n})`,
     powersTitle: 'Special guests',
     powerName: { investigator: 'Investigator', exorcist: 'Exorcist', medium: 'Medium' },
   },

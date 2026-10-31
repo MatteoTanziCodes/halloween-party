@@ -886,6 +886,7 @@ export function buildReveal(s: GameState): RevealView {
       name: p.name,
       role: p.role,
       power: p.power ?? null,
+      death: p.death,
       photoVersion: p.photoVersion,
       memeVersion: p.memeVersion ?? 0,
     })),
