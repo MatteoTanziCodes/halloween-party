@@ -94,12 +94,14 @@
     clearTimeout(pollTimer);
     if (!token || document.hidden) return;
     // Between phases phones still check every few seconds, so night and voting open on every
-    // phone within moments of the host tapping. Once the game is over there's nothing to wait for.
-    let ms = 3000;
+    // phone within moments of the host tapping. Hidden phones don't poll at all. Kept modest so
+    // 35 phones stay well inside Cloudflare's free daily request limit (100k).
+    let ms = 4000;
     if (view) {
       if (view.phase === 'night') ms = view.teamPicks ? 2000 : 3000;
-      else if (view.phase === 'lobby') ms = 5000;
-      else if (view.phase === 'ended') ms = 20000;
+      else if (view.phase === 'vote') ms = 3000;
+      else if (view.phase === 'lobby') ms = 10000;
+      else if (view.phase === 'ended') ms = 30000;
     }
     pollTimer = setTimeout(poll, ms);
   }
