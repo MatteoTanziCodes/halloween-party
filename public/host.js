@@ -189,7 +189,7 @@
   function rulesSheet() {
     return sheet(
       COPY.rulesTitle,
-      [h('div', { class: 'speech' }, COPY.rulesSpeech.map((t) => h('p', {}, t))), h('button', { class: 'primary', onclick: closeAll }, COPY.close)],
+      [h('div', { class: 'speech' }, COPY.rulesSpeech(S.totalRounds).map((t) => h('p', {}, t))), h('button', { class: 'primary', onclick: closeAll }, COPY.close)],
       closeAll,
     );
   }
@@ -492,8 +492,41 @@
         ),
       ),
       h('div', { class: 'panel' }, h('h3', {}, COPY.powersLabel), h('p', { class: 'small muted' }, COPY.powersLine(kc.powerCounts))),
+      lengthPanel(),
       h('button', { onclick: () => { ui.rules = true; requestRender(); } }, COPY.rulesButton),
     ];
+  }
+
+  // Rounds and night timer. Shown in the lobby and during the game, so the host can stretch or
+  // shorten a game that's running long or short.
+  function lengthPanel() {
+    const rounds = S.totalRounds;
+    const night = S.nightSeconds || 60;
+    const minRounds = Math.max(1, S.phase === 'idle' ? S.round + 1 : S.round);
+    // Rounds still to play, counting the one in progress.
+    const left = rounds - (S.phase === 'idle' ? S.round : S.round - 1);
+    return h(
+      'div',
+      { class: 'panel' },
+      h('h3', {}, COPY.lengthLabel),
+      h('p', { class: 'small muted' }, COPY.roundsLabel),
+      h(
+        'div',
+        { class: 'stepper' },
+        h('button', { 'aria-label': 'Fewer rounds', disabled: rounds <= minRounds, onclick: () => act('game-length', { rounds: rounds - 1 }) }, '−'),
+        h('div', { class: 'keycount', 'aria-live': 'polite' }, String(rounds)),
+        h('button', { 'aria-label': 'More rounds', disabled: rounds >= 10, onclick: () => act('game-length', { rounds: rounds + 1 }) }, '+'),
+      ),
+      h('p', { class: 'small muted' }, COPY.nightLabel),
+      h(
+        'div',
+        { class: 'stepper' },
+        h('button', { 'aria-label': 'Shorter nights', disabled: night <= 30, onclick: () => act('game-length', { nightSeconds: Math.max(30, night - 15) }) }, '−'),
+        h('div', { class: 'keycount', 'aria-live': 'polite' }, clock(night * 1000)),
+        h('button', { 'aria-label': 'Longer nights', disabled: night >= 180, onclick: () => act('game-length', { nightSeconds: Math.min(180, night + 15) }) }, '+'),
+      ),
+      h('p', { class: 'small muted' }, S.phase === 'lobby' ? COPY.lengthEstimate(rounds, night) : COPY.lengthLeft(left, night)),
+    );
   }
 
   function playerRow(p) {
@@ -569,6 +602,7 @@
       ...primary(),
       ...phasePanel(),
       ...lobbyPanel(),
+      S.phase !== 'lobby' && S.phase !== 'ended' ? lengthPanel() : null,
       ...playerList(),
       ...dangerZone(),
     ].filter(Boolean);

@@ -67,6 +67,8 @@ export interface GameState {
   phase: Phase;
   round: number;
   totalRounds: number;
+  /** Night timer length. Optional: older saved games predate it (60s). */
+  nightSeconds?: number;
   victimsPerNight: number;
   killerCountOverride: number | null;
   players: Player[];

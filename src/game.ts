@@ -20,6 +20,9 @@ import type {
 export const TOTAL_ROUNDS = 5;
 export const VICTIMS_PER_NIGHT = 3;
 export const NIGHT_MS = 60_000;
+export const MAX_ROUNDS = 10;
+export const MIN_NIGHT_SECONDS = 30;
+export const MAX_NIGHT_SECONDS = 180;
 export const EXTEND_MS = 30_000;
 export const MIN_PLAYERS = 4;
 export const MAX_NAME = 20;
@@ -231,6 +234,30 @@ export function setKillerCount(state: GameState, count: unknown): GameState {
   });
 }
 
+/**
+ * The host sets how long the game runs: the number of rounds and the night timer. Either can change
+ * mid-game, but never below the round already being played; a new night length applies from the next night.
+ */
+export function setGameLength(state: GameState, rounds: unknown, nightSeconds: unknown): GameState {
+  if (state.phase === 'ended') throw new GameError(409, 'The game is over.');
+  if (rounds !== undefined) {
+    // Between rounds (idle) the next night is round+1, so at least that many rounds must remain.
+    const min = Math.max(1, state.phase === 'idle' ? state.round + 1 : state.round);
+    if (typeof rounds !== 'number' || !Number.isInteger(rounds) || rounds < min || rounds > MAX_ROUNDS) {
+      throw new GameError(400, `Rounds must be a whole number from ${min} to ${MAX_ROUNDS}.`);
+    }
+  }
+  if (nightSeconds !== undefined) {
+    if (typeof nightSeconds !== 'number' || !Number.isInteger(nightSeconds) || nightSeconds < MIN_NIGHT_SECONDS || nightSeconds > MAX_NIGHT_SECONDS) {
+      throw new GameError(400, `Night length must be ${MIN_NIGHT_SECONDS}–${MAX_NIGHT_SECONDS} seconds.`);
+    }
+  }
+  return edit(state, (s) => {
+    if (rounds !== undefined) s.totalRounds = rounds as number;
+    if (nightSeconds !== undefined) s.nightSeconds = nightSeconds as number;
+  });
+}
+
 export function renamePlayer(state: GameState, id: string, rawName: unknown): GameState {
   findPlayer(state, id);
   const name = cleanName(rawName);
@@ -355,7 +382,7 @@ export function openNight(state: GameState, ctx: Ctx): GameState {
     s.round += 1;
     s.nights.push({ round: s.round, picks: {}, victims: [], eligible: living(s).map((p) => p.id), actions: {}, saved: [], findings: {} });
     s.phase = 'night';
-    s.nightEndsAt = ctx.now + NIGHT_MS;
+    s.nightEndsAt = ctx.now + (s.nightSeconds ? s.nightSeconds * 1000 : NIGHT_MS);
   });
 }
 

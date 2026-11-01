@@ -1,5 +1,10 @@
 // All instruction and screen text lives here so it can be tweaked without touching logic.
 // The game's name is set by the host and arrives from the server; this is only the fallback.
+// About 13 minutes a round plus the night itself, rounded to 5.
+function roundMinutes(rounds, nightSeconds) {
+  return Math.max(5, Math.round((rounds * (13 + nightSeconds / 60)) / 5) * 5);
+}
+
 window.COPY = {
   defaultTitle: 'Murder on the Mews',
 
@@ -66,7 +71,7 @@ window.COPY = {
     'When the host calls night, tap up to 3 names. Everyone does this, so nobody looks suspicious. Special guests tap just one.',
     'The host announces who died. Then everyone argues and votes someone out.',
     'If you die, keep partying, but no hints and no voting.',
-    'Guests win by voting out every killer. Killers win if they last 5 rounds, or if they ever equal the guests.',
+    'Guests win by voting out every killer. Killers win if they survive every round, or if they ever equal the guests.',
     "Hold down on anyone's name to see their meme costume.",
   ],
   helpClose: 'Got it',
@@ -162,6 +167,7 @@ window.COPY = {
         'Put the join QR code where people can scan it (Print poster makes a big one). Everyone joins on their own phone.',
         'Optional: tap Add photos to snap each guest, so faces show next to names.',
         'Check the player count matches the room. Killers and special guests are set automatically from it (you can change the killer count).',
+        'Set the game length: the number of rounds (about 14 minutes each) and the night timer. You can add or remove rounds mid-game too, if the party is running long or short.',
         "Gather everyone and read the rules speech (button below), then tap Start game. Once you start, nobody else can join.",
       ],
     },
@@ -179,7 +185,7 @@ window.COPY = {
       title: 'How it ends',
       items: [
         'Guests win the moment every killer is voted out.',
-        'Killers win the moment they equal or outnumber the guests, or if any killer is still alive after round 5.',
+        'Killers win the moment they equal or outnumber the guests, or if any killer is still alive after the last round.',
         "When it ends, every phone shows the reveal: the winners, the losers (players who were voted out or left aren't on either list), the killers, the special guests and awards. Read it out.",
       ],
     },
@@ -204,14 +210,14 @@ window.COPY = {
   ],
   rulesButton: 'Rules speech',
   rulesTitle: 'Read this aloud',
-  rulesSpeech: [
+  rulesSpeech: (rounds) => [
     "Welcome to the murder party. Some of you are secretly killers. Everyone else is a guest, and a few guests have a secret power.",
     "When I start the game, hold the button on your phone to see your role. Don't show anyone. You can check it again any time.",
     "Each round has a night and a trial. At night, I'll say 'phones out' and everyone taps up to 3 names. Killers tap who they want dead. Guests tap whoever they suspect. Everyone does it, so nobody looks suspicious.",
     "Special guests tap just one name: the Investigator checks if someone is a killer, the Exorcist protects someone, and the Medium talks to a murdered player's spirit. They see their answer in the morning.",
     "In the morning I'll announce who died. Then you argue, accuse and defend, and everyone alive votes one person out. I'll tell you if they were a killer.",
     "If you die, keep partying, but no hints, no voting and no talking about the game.",
-    "Guests win by voting out every killer. Killers win if they last 5 rounds, or if they ever equal the guests. Good luck.",
+    `Guests win by voting out every killer. Killers win if they last ${rounds} round${rounds === 1 ? '' : 's'}, or if they ever equal the guests. Good luck.`,
   ],
 
   doThisLabel: 'Do this now',
@@ -276,6 +282,13 @@ window.COPY = {
   titleLabel: 'Game name',
   titlePrompt: 'What should the game be called?',
   killersLabel: 'Killers',
+  lengthLabel: 'Game length',
+  roundsLabel: 'Rounds',
+  nightLabel: 'Night timer',
+  // A round is the night, the morning announcement, about 10 minutes of arguing, and the vote.
+  lengthEstimate: (rounds, night) => `About ${roundMinutes(rounds, night)} minutes if it goes the distance. It ends sooner once every killer is caught.`,
+  lengthLeft: (left, night) =>
+    left <= 1 ? 'This is the last round.' : `${left} more round${left === 1 ? '' : 's'} to go, about ${roundMinutes(left, night)} minutes. Changes to the night timer apply from the next night.`,
   killersAuto: (n) => `Auto (${n} for this many players)`,
   killersOverride: (n) => `Set by you · auto would be ${n}`,
   useAuto: 'Use auto',

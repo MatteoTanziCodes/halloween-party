@@ -21,6 +21,7 @@ import {
   renamePlayer,
   resetGame,
   setKillerCount,
+  setGameLength,
   systemCtx,
   undo,
 } from './game';
@@ -188,6 +189,11 @@ export class GameDO extends DurableObject<Env> {
       case 'title': {
         const body = await readJson(request);
         await this.save(setTitle(this.state, body.title));
+        return json({ ok: true });
+      }
+      case 'game-length': {
+        const body = await readJson(request);
+        await this.save(setGameLength(this.state, body.rounds, body.nightSeconds));
         return json({ ok: true });
       }
       case 'killer-count': {
